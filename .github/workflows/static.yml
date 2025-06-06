@@ -50,16 +50,15 @@ jobs:
       with:
         context: . # El contexto de la construcción es el directorio raíz del repositorio
         push: ${{ github.event_name != 'pull_request' }} # Solo hace push en eventos que no sean pull_request
+        # Los tags DEBEN ser una lista de cadenas de texto válidas, sin comentarios inline.
+        # Todos los tags deben ser en minúsculas para ghcr.io.
         tags: |
-          # Tags para Docker Hub (Flichel/mi-pagina-web)
           flichel/mi-pagina-web:latest
           flichel/mi-pagina-web:1.0
           flichel/mi-pagina-web:${{ github.sha }}
-          # Tags para GitHub Container Registry (ghcr.io)
-          # IMPORTANTE: El nombre del repositorio (Dockernginx) DEBE ESTAR EN MINÚSCULAS para ghcr.io
-          ghcr.io/flichel/dockernginx:latest # Corregido a minúsculas
-          ghcr.io/flichel/dockernginx:1.0     # Corregido a minúsculas
-          ghcr.io/flichel/dockernginx:${{ github.sha }} # Corregido a minúsculas
+          ghcr.io/flichel/dockernginx:latest
+          ghcr.io/flichel/dockernginx:1.0
+          ghcr.io/flichel/dockernginx:${{ github.sha }}
         file: ./Dockerfile # Asegúrate de que tu Dockerfile está en la raíz del repositorio
 
   integration_tests:
@@ -82,12 +81,12 @@ jobs:
     - name: Pull Docker image
       # Descargamos la imagen que acabamos de construir.
       # Usamos el tag 'latest' de ghcr.io (con el nombre del repo en minúsculas).
-      run: docker pull ghcr.io/flichel/dockernginx:latest # Corregido a minúsculas
+      run: docker pull ghcr.io/flichel/dockernginx:latest
 
     - name: Run Docker container for tests
       # Ejecutamos el contenedor en segundo plano.
       # Mapeamos el puerto 8080 del host (runner) al puerto 80 del contenedor.
-      run: docker run -d -p 8080:80 --name test-nginx ghcr.io/flichel/dockernginx:latest # Corregido a minúsculas
+      run: docker run -d -p 8080:80 --name test-nginx ghcr.io/flichel/dockernginx:latest
 
     - name: Wait for Nginx to be ready
       # Esperamos un momento para que Nginx inicie completamente dentro del contenedor.
@@ -131,12 +130,12 @@ jobs:
 
     - name: Download built image
       # Descargamos la imagen para escanearla.
-      run: docker pull ghcr.io/flichel/dockernginx:latest # Corregido a minúsculas
+      run: docker pull ghcr.io/flichel/dockernginx:latest
 
     - name: Run Trivy vulnerability scan
       uses: aquasec/trivy-action@master
       with:
-        image-ref: ghcr.io/flichel/dockernginx:latest # Corregido a minúsculas
+        image-ref: ghcr.io/flichel/dockernginx:latest
         format: 'sarif'
         output: 'trivy-results.sarif'
         # Puedes configurar la severidad mínima y otras opciones de Trivy aquí (ej: severity: 'HIGH,CRITICAL')
