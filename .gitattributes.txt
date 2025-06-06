@@ -1,0 +1,32 @@
+# Set default behavior to automatically normalize line endings.
+* text=auto
+
+# Force specific files to use LF line endings
+# for cross-platform compatibility, especially shell scripts.
+*.sh text eol=lf
+
+# Explicitly mark known text files for clarity, though `text=auto` usually handles them.
+# This also ensures consistent line endings across platforms.
+*.html text
+*.css text
+.github/workflows/*.yml text # For your GitHub Actions workflow files
+Dockerfile text # For your Dockerfile
+
+# Mark binary files to prevent Git from trying to merge them,
+# which can corrupt them and cause issues.
+# Add any image files, fonts, or other binary assets you might have.
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.pdf binary
+*.zip binary
+*.tar binary
+*.gz binary
+*.mp3 binary
+*.mp4 binary
+*.mov binary
+*.ttf binary
+*.woff binary
+*.woff2 binary
