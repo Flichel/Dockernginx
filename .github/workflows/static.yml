@@ -133,7 +133,8 @@ jobs:
       run: docker pull ghcr.io/flichel/dockernginx:latest
 
     - name: Run Trivy vulnerability scan
-      uses: aquasec/trivy-action@master
+      # CAMBIO AQUÍ: Usamos un tag de versión específico en lugar de 'master'
+      uses: aquasec/trivy-action@v0.15.0 # Puedes probar con esta versión o la más reciente.
       with:
         image-ref: ghcr.io/flichel/dockernginx:latest
         format: 'sarif'
