@@ -133,9 +133,8 @@ jobs:
       run: docker pull ghcr.io/flichel/dockernginx:latest
 
     - name: Run Trivy vulnerability scan
-      # ¡CORRECCIÓN FINAL Y CRÍTICA AQUÍ!
-      # El nombre de la organización es 'aquasecurity', no 'aquasec'.
-      uses: aquasecurity/trivy-action@v0.30.0
+      # Cambiado de nuevo a 'master' con el nombre de organización 'aquasecurity'
+      uses: aquasecurity/trivy-action@master
       with:
         image-ref: ghcr.io/flichel/dockernginx:latest
         format: 'sarif'
