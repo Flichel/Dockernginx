@@ -48,16 +48,13 @@ jobs:
     - name: Build and push Docker image with Bake # Construye y publica la imagen usando Docker Bake
       # Docker Bake es una herramienta declarativa para definir y construir imágenes Docker.
       # Utiliza el archivo 'docker-bake.hcl' para la configuración de la construcción.
+      # Se elimina la sección 'env:' que pasaba GIT_SHA
       uses: docker/bake-action@v5
       with:
         files: ./docker-bake.hcl
         targets: nginx-image # Especifica el target a construir definido en docker-bake.hcl
         # Controla si se hace push a los registries. No se hace push en Pull Requests.
         push: ${{ github.event_name != 'pull_request' }}
-        # --- ¡CORRECCIÓN CLAVE AQUÍ! Usamos 'set' para pasar el SHA a la variable GIT_SHA en docker-bake.hcl ---
-        set: |
-          *.GIT_SHA=${{ github.sha }}
-        # ---------------------------------------------------------------------------------------------------
 
   # Job 2: Pruebas Unitarias de la Imagen Docker
   # Este job ejecuta pruebas de "unidad" contra la imagen Docker recién construida.
@@ -165,4 +162,4 @@ jobs:
       # Utiliza la acción CodeQL para subir los resultados SARIF.
       uses: github/codeql-action/upload-sarif@v3
       with:
-        sarif_file: 'trivy-results.sarif' # Especifica el archivo SARIF a subir
+        sarif_file: 'trivy-results.sarif'
