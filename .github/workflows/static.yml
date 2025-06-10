@@ -50,8 +50,7 @@ jobs:
       # Utiliza el archivo 'docker-bake.hcl' para la configuración de la construcción.
       uses: docker/bake-action@v5
       with:
-        files: |
-          ./docker-bake.hcl # Especifica el archivo de definición de Bake
+        files: ./docker-bake.hcl # <--- ¡CORRECCIÓN AQUÍ! Se eliminó el comentario de la misma línea.
         targets: nginx-image # Especifica el target a construir definido en docker-bake.hcl
         # Controla si se hace push a los registries. No se hace push en Pull Requests.
         push: ${{ github.event_name != 'pull_request' }}

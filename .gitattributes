@@ -9,8 +9,8 @@
 # This also ensures consistent line endings across platforms.
 *.html text
 *.css text
-.github/workflows/*.yml text # For your GitHub Actions workflow files
-Dockerfile text # For your Dockerfile
+.github/workflows/*.yml text
+Dockerfile text
 
 # Mark binary files to prevent Git from trying to merge them,
 # which can corrupt them and cause issues.
