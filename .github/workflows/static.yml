@@ -1,147 +1,165 @@
-# Este flujo de trabajo utiliza acciones que no están certificadas por GitHub.
-# Son proporcionadas por un tercero y se rigen por
-# términos de servicio, política de privacidad y documentación de soporte
-# separados.
+# Este flujo de trabajo automatiza el proceso de CI/CD para una imagen Docker de Nginx.
+# Incluye la construcción de la imagen con Docker Bake, pruebas unitarias de la imagen,
+# pruebas de integración y un escaneo de seguridad con Trivy.
 
-# Este flujo de trabajo construirá una imagen Docker para NGINX basada en Alpine,
-# la publicará en Docker Hub y GitHub Container Registry, y ejecutará pruebas de integración.
-name: NGINX Alpine Docker CI
+name: NGINX Alpine Docker CI # Nombre del flujo de trabajo visible en GitHub Actions
 
+# Define los eventos que dispararán este flujo de trabajo
 on:
   push:
-    branches: [ "main" ]
+    branches: [ "main" ] # Se ejecuta en cada push a la rama 'main'
   pull_request:
-    branches: [ "main" ]
+    branches: [ "main" ] # Se ejecuta en cada pull request abierto o actualizado a la rama 'main'
 
+# Define los diferentes trabajos (jobs) que componen el flujo de trabajo
 jobs:
+  # Job 1: Construcción y publicación de la imagen Docker
+  # Este job se encarga de construir la imagen usando Docker Bake y de publicarla
+  # en Docker Hub y GitHub Container Registry (GHCR).
   build_and_push_docker_image:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-latest # Ejecuta este job en una máquina virtual Ubuntu
     permissions:
-      contents: read
-      packages: write # Necesario para publicar imágenes en GitHub Packages (ghcr.io)
+      contents: read   # Permite leer el contenido del repositorio
+      packages: write  # Necesario para publicar imágenes en GitHub Packages (ghcr.io)
 
     steps:
-    - name: Checkout repository
+    - name: Checkout repository # Paso para clonar el repositorio
       uses: actions/checkout@v4
 
-    - name: Set up Docker Buildx
+    - name: Set up Docker Buildx # Configura Buildx para permitir builds multi-arquitectura y caché
       uses: docker/setup-buildx-action@v3
 
-    - name: Login to Docker Hub
-      # Esta acción utiliza ${{ secrets.DOCKER_USERNAME }} y ${{ secrets.DOCKER_PASSWORD }}
-      # Asegúrate de que DOCKER_PASSWORD contenga tu Personal Access Token de Docker Hub.
-      if: github.event_name != 'pull_request' # Solo intenta login si no es un PR
+    - name: Login to Docker Hub # Inicia sesión en Docker Hub
+      # Solo intenta iniciar sesión si el evento NO es un pull_request (para evitar problemas de credenciales en forks)
+      if: github.event_name != 'pull_request'
       uses: docker/login-action@v3
       with:
-        username: ${{ secrets.DOCKER_USERNAME }}
-        password: ${{ secrets.DOCKER_PASSWORD }}
+        username: ${{ secrets.DOCKER_USERNAME }} # Usa el secreto de GitHub para el usuario de Docker Hub
+        password: ${{ secrets.DOCKER_PASSWORD }} # Usa el secreto de GitHub para la contraseña/PAT de Docker Hub
 
-    - name: Login to GitHub Container Registry
-      # Esta acción utiliza el GITHUB_TOKEN proporcionado automáticamente por GitHub Actions
-      # para autenticarse en ghcr.io.
+    - name: Login to GitHub Container Registry # Inicia sesión en GitHub Container Registry (ghcr.io)
+      # Utiliza el token de GitHub provisto automáticamente, que tiene permisos para ghcr.io
       uses: docker/login-action@v3
       with:
         registry: ghcr.io
-        username: ${{ github.actor }}
-        password: ${{ secrets.GITHUB_TOKEN }}
+        username: ${{ github.actor }} # El actor (usuario) que inició el flujo de trabajo
+        password: ${{ secrets.GITHUB_TOKEN }} # Token automático de GitHub para autenticación
 
-    - name: Build and push Docker image
-      uses: docker/build-push-action@v5
+    - name: Build and push Docker image with Bake # Construye y publica la imagen usando Docker Bake
+      # Docker Bake es una herramienta declarativa para definir y construir imágenes Docker.
+      # Utiliza el archivo 'docker-bake.hcl' para la configuración de la construcción.
+      uses: docker/bake-action@v5
       with:
-        context: . # El contexto de la construcción es el directorio raíz del repositorio
-        push: ${{ github.event_name != 'pull_request' }} # Solo hace push en eventos que no sean pull_request
-        # Los tags DEBEN ser una lista de cadenas de texto válidas, sin comentarios inline.
-        # Todos los tags deben ser en minúsculas para ghcr.io.
-        tags: |
-          flichel/mi-pagina-web:latest
-          flichel/mi-pagina-web:1.0
-          flichel/mi-pagina-web:${{ github.sha }}
-          ghcr.io/flichel/dockernginx:latest
-          ghcr.io/flichel/dockernginx:1.0
-          ghcr.io/flichel/dockernginx:${{ github.sha }}
-        file: ./Dockerfile # Asegúrate de que tu Dockerfile está en la raíz del repositorio
+        files: |
+          ./docker-bake.hcl # Especifica el archivo de definición de Bake
+        targets: nginx-image # Especifica el target a construir definido en docker-bake.hcl
+        # Controla si se hace push a los registries. No se hace push en Pull Requests.
+        push: ${{ github.event_name != 'pull_request' }}
 
-  integration_tests:
-    runs-on: ubuntu-latest
-    # Este job necesita que la imagen se haya construido y esté disponible en el registry
-    # antes de poder ejecutar las pruebas.
-    needs: build_and_push_docker_image
+  # Job 2: Pruebas Unitarias de la Imagen Docker
+  # Este job ejecuta pruebas de "unidad" contra la imagen Docker recién construida.
+  # Estas pruebas inspeccionan el contenido y la configuración de la imagen.
+  image_unit_tests:
+    runs-on: ubuntu-latest # Ejecuta este job en una máquina virtual Ubuntu
+    needs: build_and_push_docker_image # Este job depende de que el job de construcción haya finalizado exitosamente
+
     steps:
-    - name: Checkout repository
+    - name: Checkout repository # Clona el repositorio para acceder a los scripts de prueba
       uses: actions/checkout@v4
 
-    - name: Log in to GitHub Container Registry
-      # Es importante loguearse de nuevo para poder descargar la imagen (pull)
+    - name: Log in to GitHub Container Registry # Necesario para hacer pull de la imagen construida
       uses: docker/login-action@v3
       with:
         registry: ghcr.io
         username: ${{ github.actor }}
         password: ${{ secrets.GITHUB_TOKEN }}
 
-    - name: Pull Docker image
-      # Descargamos la imagen que acabamos de construir.
-      # Usamos el tag 'latest' de ghcr.io (con el nombre del repo en minúsculas).
-      run: docker pull ghcr.io/flichel/dockernginx:latest
+    - name: Run Image Unit Tests # Ejecuta el script de pruebas unitarias de la imagen
+      run: |
+        chmod +x ./test/unit_image_tests.sh # Asegura que el script de prueba sea ejecutable
+        # Ejecuta el script de pruebas, pasando el nombre de la imagen como argumento.
+        # Usa 'vars' para acceder a las variables de GitHub y un fallback ('flichel', 'dockernginx')
+        # si las variables no están definidas.
+        ./test/unit_image_tests.sh ghcr.io/${{ vars.GITHUB_OWNER || 'flichel' }}/${{ vars.GHCR_REPO_NAME || 'dockernginx' }}:latest
 
-    - name: Run Docker container for tests
-      # Ejecutamos el contenedor en segundo plano.
-      # Mapeamos el puerto 8080 del host (runner) al puerto 80 del contenedor.
-      run: docker run -d -p 8080:80 --name test-nginx ghcr.io/flichel/dockernginx:latest
+  # Job 3: Pruebas de Integración
+  # Este job ejecuta pruebas de integración para verificar que la aplicación web (Nginx)
+  # se comporta como se espera una vez desplegada en un contenedor Docker.
+  integration_tests:
+    runs-on: ubuntu-latest # Ejecuta este job en una máquina virtual Ubuntu
+    # Depende de que la imagen se haya construido y las pruebas unitarias de la imagen hayan pasado.
+    needs: [build_and_push_docker_image, image_unit_tests]
 
-    - name: Wait for Nginx to be ready
-      # Esperamos un momento para que Nginx inicie completamente dentro del contenedor.
-      # Esto evita que las pruebas fallen si el servidor no está listo inmediatamente.
+    steps:
+    - name: Checkout repository # Clona el repositorio para acceder a los scripts de prueba
+      uses: actions/checkout@v4
+
+    - name: Log in to GitHub Container Registry # Necesario para hacer pull de la imagen construida
+      uses: docker/login-action@v3
+      with:
+        registry: ghcr.io
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Pull Docker image # Descarga la imagen Docker construida desde GHCR
+      run: docker pull ghcr.io/${{ vars.GITHUB_OWNER || 'flichel' }}/${{ vars.GHCR_REPO_NAME || 'dockernginx' }}:latest
+
+    - name: Run Docker container for tests # Ejecuta el contenedor Docker en segundo plano para las pruebas
+      # Mapea el puerto 8080 del host (runner) al puerto 80 del contenedor Nginx.
+      run: docker run -d -p 8080:80 --name test-nginx ghcr.io/${{ vars.GITHUB_OWNER || 'flichel' }}/${{ vars.GHCR_REPO_NAME || 'dockernginx' }}:latest
+
+    - name: Wait for Nginx to be ready # Espera a que el servidor Nginx dentro del contenedor esté completamente operativo
+      # Usa 'curl' en un bucle con un timeout para esperar la respuesta del servidor.
       run: |
         echo "Esperando que Nginx esté listo..."
         timeout 60 bash -c 'until curl -s http://localhost:8080; do sleep 1; done'
         echo "Nginx está listo."
 
-    - name: Run Integration Tests
-      # Ejecutamos tu script de pruebas.
-      # Ajustamos los curl en el script para que apunten al puerto 8080 del host.
+    - name: Run Integration Tests # Ejecuta el script de pruebas de integración
       run: |
-        chmod +x ./test/test.sh # Asegúrate de que el script sea ejecutable
-        # Reemplazamos 'http://localhost' por 'http://localhost:8080' en el script
+        chmod +x ./test/test.sh # Asegura que el script sea ejecutable
+        # Modifica el script de pruebas en tiempo real para que apunte al puerto 8080 del host
         sed -i 's|http://localhost|http://localhost:8080|g' ./test/test.sh
         ./test/test.sh # Ejecuta el script de pruebas ubicado en la carpeta 'test'
 
-    - name: Stop and remove Docker container
-      if: always() # Ejecutar siempre, incluso si las pruebas fallan, para limpiar recursos
+    - name: Stop and remove Docker container # Detiene y elimina el contenedor Docker después de las pruebas
+      # 'if: always()' asegura que este paso se ejecute incluso si las pruebas anteriores fallan, para limpiar recursos.
+      if: always()
       run: docker stop test-nginx && docker rm test-nginx
 
+  # Job 4: Escaneo de Seguridad de la Imagen
+  # Este job utiliza Trivy para escanear la imagen Docker en busca de vulnerabilidades conocidas.
   security_scan:
-    runs-on: ubuntu-latest
-    # Este job solo necesita la imagen construida, no que las pruebas pasen necesariamente.
-    needs: build_and_push_docker_image
+    runs-on: ubuntu-latest # Ejecuta este job en una máquina virtual Ubuntu
+    needs: build_and_push_docker_image # Depende de que la imagen se haya construido (no necesariamente que las pruebas pasen)
     permissions:
-      contents: read
-      security-events: write # Necesario para subir resultados de escaneo de seguridad a GitHub
+      contents: read          # Permite leer el contenido del repositorio
+      security-events: write  # Necesario para subir los resultados de escaneo de seguridad a GitHub
 
     steps:
-    - name: Checkout repository
+    - name: Checkout repository # Clona el repositorio
       uses: actions/checkout@v4
 
-    - name: Log in to GitHub Container Registry
+    - name: Log in to GitHub Container Registry # Necesario para descargar la imagen a escanear
       uses: docker/login-action@v3
       with:
         registry: ghcr.io
         username: ${{ github.actor }}
         password: ${{ secrets.GITHUB_TOKEN }}
 
-    - name: Download built image
-      # Descargamos la imagen para escanearla.
-      run: docker pull ghcr.io/flichel/dockernginx:latest
+    - name: Download built image # Descarga la imagen Docker para el escaneo
+      run: docker pull ghcr.io/${{ vars.GITHUB_OWNER || 'flichel' }}/${{ vars.GHCR_REPO_NAME || 'dockernginx' }}:latest
 
-    - name: Run Trivy vulnerability scan
-      # Cambiado de nuevo a 'master' con el nombre de organización 'aquasecurity'
+    - name: Run Trivy vulnerability scan # Ejecuta el escaneo de vulnerabilidades con Trivy
+      # Utiliza la acción de Trivy para escanear la imagen.
       uses: aquasecurity/trivy-action@master
       with:
-        image-ref: ghcr.io/flichel/dockernginx:latest
-        format: 'sarif'
-        output: 'trivy-results.sarif'
-        # Puedes configurar la severidad mínima y otras opciones de Trivy aquí (ej: severity: 'HIGH,CRITICAL')
+        image-ref: ghcr.io/${{ vars.GITHUB_OWNER || 'flichel' }}/${{ vars.GHCR_REPO_NAME || 'dockernginx' }}:latest
+        format: 'sarif' # Formato de salida de los resultados (SARIF es estándar para GitHub)
+        output: 'trivy-results.sarif' # Nombre del archivo donde se guardarán los resultados
 
-    - name: Upload Trivy scan results to GitHub Security tab
+    - name: Upload Trivy scan results to GitHub Security tab # Sube los resultados del escaneo a la pestaña de Seguridad de GitHub
+      # Utiliza la acción CodeQL para subir los resultados SARIF.
       uses: github/codeql-action/upload-sarif@v3
       with:
-        sarif_file: 'trivy-results.sarif'
+        sarif_file: 'trivy-results.sarif' # Especifica el archivo SARIF a subir
