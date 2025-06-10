@@ -1,24 +1,10 @@
-variable "DOCKER_USERNAME" {
-  type    = string
-  default = "flichel" # <--- ¡IMPORTANTE! Cambia esto a tu nombre de usuario de Docker Hub
-}
+variable "DOCKER_USERNAME" { default = "flichel" } # Tu nombre de usuario de Docker Hub
+variable "REPO_NAME" { default = "mi-pagina-web" } # Nombre de tu repositorio Docker Hub
+variable "GITHUB_OWNER" { default = "flichel" } # Tu usuario/organización de GitHub para ghcr.io
+variable "GHCR_REPO_NAME" { default = "dockernginx" } # Nombre del repositorio en GHCR
 
-variable "REPO_NAME" {
-  type    = string
-  default = "mi-pagina-web" # <--- ¡IMPORTANTE! Cambia esto al nombre de tu repositorio en Docker Hub
-}
-
-variable "GITHUB_OWNER" {
-  type    = string
-  default = "flichel" # <--- ¡IMPORTANTE! Cambia esto a tu nombre de usuario o el de tu organización de GitHub
-}
-
-variable "GHCR_REPO_NAME" {
-  type    = string
-  default = "dockernginx" # <--- ¡IMPORTANTE! Cambia esto al nombre de tu repositorio en GHCR
-}
-
-# --- ¡Aquí NO va la definición de variable "GIT_SHA" si se pasa como build-arg! ---
+# Variable para el SHA del commit, su valor se establecerá desde GitHub Actions
+variable "GIT_SHA" { default = "latest" }
 
 group "default" {
   targets = ["nginx-image"]
@@ -30,14 +16,11 @@ target "nginx-image" {
   tags = [
     "${DOCKER_USERNAME}/${REPO_NAME}:latest",
     "${DOCKER_USERNAME}/${REPO_NAME}:1.0",
-    "${DOCKER_USERNAME}/${REPO_NAME}:{{.BuildArgs.GIT_SHA_TAG}}", # <--- ¡CAMBIO AQUÍ! Usa la sintaxis BuildArgs
+    "${DOCKER_USERNAME}/${REPO_NAME}:${GIT_SHA}", # Usa la variable GIT_SHA
     "ghcr.io/${GITHUB_OWNER}/${GHCR_REPO_NAME}:latest",
     "ghcr.io/${GITHUB_OWNER}/${GHCR_REPO_NAME}:1.0",
-    "ghcr.io/${GITHUB_OWNER}/${GHCR_REPO_NAME}:{{.BuildArgs.GIT_SHA_TAG}}" # <--- ¡CAMBIO AQUÍ!
+    "ghcr.io/${GITHUB_OWNER}/${GHCR_REPO_NAME}:${GIT_SHA}" # Usa la variable GIT_SHA
   ]
-  platforms = [
-    "linux/amd64",
-    # "linux/arm64"
-  ]
+  platforms = ["linux/amd64"] # Descomenta "linux/arm64" si es multi-arquitectura
   push = true
 }

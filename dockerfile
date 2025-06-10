@@ -1,8 +1,6 @@
 # Imagen base con Nginx
 FROM nginx:alpine
 
-ARG GIT_SHA_TAG=latest # <--- ¡NUEVA LÍNEA AQUÍ! Define un argumento de construcción con un valor predeterminado
-
 # Elimina la página de bienvenida por defecto
 RUN rm -rf /usr/share/nginx/html/*
 

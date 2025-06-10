@@ -51,13 +51,13 @@ jobs:
       uses: docker/bake-action@v5
       with:
         files: ./docker-bake.hcl
-        targets: nginx-image
+        targets: nginx-image # Especifica el target a construir definido en docker-bake.hcl
         # Controla si se hace push a los registries. No se hace push en Pull Requests.
         push: ${{ github.event_name != 'pull_request' }}
-        # --- ¡CORRECCIÓN AÑADIDA AQUÍ: Pasando el SHA como build-arg! ---
-        build-args: |
-          GIT_SHA_TAG=${{ github.sha }}
-        # ----------------------------------------------------------------
+        # --- ¡CORRECCIÓN CLAVE AQUÍ! Usamos 'set' para pasar el SHA a la variable GIT_SHA en docker-bake.hcl ---
+        set: |
+          *.GIT_SHA=${{ github.sha }}
+        # ---------------------------------------------------------------------------------------------------
 
   # Job 2: Pruebas Unitarias de la Imagen Docker
   # Este job ejecuta pruebas de "unidad" contra la imagen Docker recién construida.
