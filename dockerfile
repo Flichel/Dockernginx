@@ -4,8 +4,8 @@ FROM nginx:alpine
 # Limpia el directorio de Nginx por defecto de forma recursiva y forzada,
 # asegurando que todo su contenido se elimina ANTES de copiar los nuevos archivos.
 RUN rm -rf /usr/share/nginx/html/* && \
-    rm -rf /usr/share/nginx/html/.??* || true && \ # Para eliminar archivos/directorios ocultos
-    mkdir -p /usr/share/nginx/html # Re-crea el directorio por si rm -rf lo eliminó al estar vacío, aunque no suele pasar con /*
+    rm -rf /usr/share/nginx/html/.??* || true && \
+    mkdir -p /usr/share/nginx/html # <--- ¡CORRECCIÓN AQUÍ! Asegúrate de que esta línea es parte del RUN, sin saltos de línea inesperados.
 
 # Copia tus archivos HTML y CSS al contenedor
 COPY index.html /usr/share/nginx/html/
