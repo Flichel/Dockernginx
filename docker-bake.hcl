@@ -15,14 +15,10 @@ variable "GITHUB_OWNER" {
 
 variable "GHCR_REPO_NAME" {
   type    = string
-  default = "dockernginx" # <--- ¡IMPORTANTE! Cambia esto al nombre de tu repositorio en GHCR (GitHub Container Registry)
+  default = "dockernginx" # <--- ¡IMPORTANTE! Cambia esto al nombre de tu repositorio en GHCR
 }
 
-# Nueva variable para el SHA del commit de Git
-variable "GIT_SHA" {
-  type    = string
-  default = "latest" # Valor por defecto, pero GitHub Actions lo sobrescribirá
-}
+# --- ¡Aquí NO va la definición de variable "GIT_SHA" si se pasa como build-arg! ---
 
 group "default" {
   targets = ["nginx-image"]
@@ -34,14 +30,14 @@ target "nginx-image" {
   tags = [
     "${DOCKER_USERNAME}/${REPO_NAME}:latest",
     "${DOCKER_USERNAME}/${REPO_NAME}:1.0",
-    "${DOCKER_USERNAME}/${REPO_NAME}:${GIT_SHA}", # Usa la variable GIT_SHA aquí
+    "${DOCKER_USERNAME}/${REPO_NAME}:{{.BuildArgs.GIT_SHA_TAG}}", # <--- ¡CAMBIO AQUÍ! Usa la sintaxis BuildArgs
     "ghcr.io/${GITHUB_OWNER}/${GHCR_REPO_NAME}:latest",
     "ghcr.io/${GITHUB_OWNER}/${GHCR_REPO_NAME}:1.0",
-    "ghcr.io/${GITHUB_OWNER}/${GHCR_REPO_NAME}:${GIT_SHA}" # Y aquí también
+    "ghcr.io/${GITHUB_OWNER}/${GHCR_REPO_NAME}:{{.BuildArgs.GIT_SHA_TAG}}" # <--- ¡CAMBIO AQUÍ!
   ]
   platforms = [
     "linux/amd64",
-    # "linux/arm64" # Descomenta esta línea si quieres builds multi-arquitectura para ARM
+    # "linux/arm64"
   ]
   push = true
 }

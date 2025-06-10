@@ -54,10 +54,10 @@ jobs:
         targets: nginx-image
         # Controla si se hace push a los registries. No se hace push en Pull Requests.
         push: ${{ github.event_name != 'pull_request' }}
-        # --- ¡CORRECCIÓN AÑADIDA AQUÍ! ---
-        set: |
-          *.GIT_SHA=${{ github.sha }}
-        # ----------------------------------
+        # --- ¡CORRECCIÓN AÑADIDA AQUÍ: Pasando el SHA como build-arg! ---
+        build-args: |
+          GIT_SHA_TAG=${{ github.sha }}
+        # ----------------------------------------------------------------
 
   # Job 2: Pruebas Unitarias de la Imagen Docker
   # Este job ejecuta pruebas de "unidad" contra la imagen Docker recién construida.
