@@ -47,11 +47,10 @@ run_test "index.html file exists and is accessible" "docker run --rm $IMAGE_NAME
 run_test "styles.css file exists and is accessible" "docker run --rm $IMAGE_NAME stat /usr/share/nginx/html/styles.css >/dev/null 2>&1"
 
 # Prueba 4: Verificar que el directorio por defecto de Nginx fue limpiado
-run_test "Nginx default directory was cleaned" "test \"\$(docker run --rm $IMAGE_NAME ls -A /usr/share/nginx/html/ | wc -l)\" -eq 0"
+# Esta prueba se ha modificado para esperar 2 archivos (index.html y styles.css) después de la copia.
+run_test "Nginx default directory contains only custom files" "test \"\$(docker run --rm $IMAGE_NAME ls -A /usr/share/nginx/html/ | wc -l)\" -eq 2"
 
 # Prueba 5: Verificar que el puerto 80 está expuesto (inspección de la imagen, no del contenedor ejecutándose)
-# Esta prueba se basa en la inspección de metadatos de la imagen, no en la ejecución.
-# Notar que 'docker inspect' es para los metadatos de la imagen, no para el estado del proceso en tiempo real.
 run_test "Port 80 is exposed in Dockerfile metadata" "docker inspect --format='{{json .Config.ExposedPorts}}' $IMAGE_NAME | grep -q '\"80/tcp\":{}'"
 
 
